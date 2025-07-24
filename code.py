@@ -15,13 +15,13 @@ DATA_PIN = board.GP2
 BUTTON_PIN = board.GP3
 
 # Amplifier Shutdown (SD) pin
-# We confirmed GP5 and GP4 were problematic, so let's stick with GP6 as it didn't give a "in use" error.
-AMP_SD_PIN = board.GP6 # Make sure you physically connect this wire to GP6
+# GP6 does not throw IN USE error for some reason.
+AMP_SD_PIN = board.GP6
 
 # --- Audio File Management ---
 AUDIO_FOLDER = "/audio/" # Adjust this if your files are in a subfolder
 
-NUM_AUDIO_FILES = 41 # Your total count
+NUM_AUDIO_FILES = 41 # Total count of audio files
 
 # Create the initial list of all possible file paths (this is our master list)
 MASTER_AUDIO_FILE_PATHS = []
@@ -124,7 +124,7 @@ while True:
                 print(f"Finished playing {file_to_play_name}. Amplifier is OFF.")
 
 
-            # --- CRITICAL CHANGE: Remove the played file from the remaining list ---
+            # Remove the played file from the remaining list ---
             files_remaining_to_play.pop(random_index)
             print(f"{len(files_remaining_to_play)} files remaining in this cycle.")
 
