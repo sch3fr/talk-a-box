@@ -1,5 +1,3 @@
-# code.py (for CircuitPython) - Randomized Playback - Fix for missing shuffle/sample
-
 import board
 import digitalio
 import audiocore
@@ -15,6 +13,10 @@ DATA_PIN = board.GP2
 
 # Pushbutton pin
 BUTTON_PIN = board.GP3
+
+# Amplifier Shutdown (SD) pin
+# We confirmed GP5 and GP4 were problematic, so let's stick with GP6 as it didn't give a "in use" error.
+AMP_SD_PIN = board.GP6 # Make sure you physically connect this wire to GP6
 
 # --- Audio File Management ---
 AUDIO_FOLDER = "/audio/" # Adjust this if your files are in a subfolder
@@ -46,6 +48,17 @@ except Exception as e:
 button = digitalio.DigitalInOut(BUTTON_PIN)
 button.direction = digitalio.Direction.INPUT
 button.pull = digitalio.Pull.UP
+# Corrected print statement:
+print(f"Button ({BUTTON_PIN}) initialized with pull-up.")
+
+
+# Initialize the Amplifier Shutdown pin
+amp_sd = digitalio.DigitalInOut(AMP_SD_PIN)
+amp_sd.direction = digitalio.Direction.OUTPUT
+amp_sd.value = False # Start with amplifier OFF for power saving
+# Corrected print statement:
+print(f"Amplifier SD pin ({AMP_SD_PIN}) initialized. Amplifier is OFF.")
+
 
 # --- State Variables for Randomized Playback ---
 # This list will hold the files that are still available to play in the current cycle
@@ -86,6 +99,11 @@ while True:
             print(f"Playing: {file_to_play_name}")
 
             try:
+                # --- Enable Amplifier before playing ---
+                amp_sd.value = True
+                # Give the amplifier a tiny moment to power up (optional, but good practice)
+                time.sleep(0.01)
+
                 with open(file_to_play_name, "rb") as audio_file:
                     wav = audiocore.WaveFile(audio_file)
                     audio_out.play(wav)
@@ -100,8 +118,11 @@ while True:
             finally:
                 if audio_out.playing:
                     audio_out.stop()
-                time.sleep(0.1)
-                print(f"Finished playing {file_to_play_name}.")
+                # --- Disable Amplifier after playing ---
+                amp_sd.value = False
+                time.sleep(0.1) # Debounce delay + small settling time for amp to shut down
+                print(f"Finished playing {file_to_play_name}. Amplifier is OFF.")
+
 
             # --- CRITICAL CHANGE: Remove the played file from the remaining list ---
             files_remaining_to_play.pop(random_index)
@@ -110,7 +131,9 @@ while True:
         else:
             print("Error: No audio files available to play after refill attempt.")
 
-        time.sleep(0.3) # Debounce delay for button press
+        # Keep a short debounce after button release, independent of playback
+        # This was already in your original code, and it's fine.
+        time.sleep(0.3) # Debounce delay for button press detection
 
     last_button_state = current_button_state
-    time.sleep(0.01) # Short delay to reduce CPU usage
+    time.sleep(0.01) # Short delay to reduce CPU usage when idle
